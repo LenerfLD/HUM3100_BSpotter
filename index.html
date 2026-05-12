@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Bias-Spotter</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&amp;display=swap" rel="stylesheet">
+  <style>
+* { font-family: 'Montserrat', sans-serif; }
+.card-shadow { box-shadow: 6px 6px 0px #000000; }
+.card-shadow-sm { box-shadow: 4px 4px 0px #000000; }
+.highlight { background: #FFFF00; padding: 2px 6px; display: inline; }
+.fade-in { animation: fadeIn 0.4s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+  <style>body { box-sizing: border-box; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full bg-white text-black overflow-auto">
+  <div id="app" class="w-full h-full flex flex-col items-center p-4 md:p-8">
+   <header class="w-full max-w-3xl mb-8 text-center">
+    <h1 id="main-title" class="text-3xl md:text-5xl font-black tracking-tight mb-2">The Bias-Spotter</h1>
+    <p id="subtitle" class="text-lg font-semibold text-black/70">A Design-Thinking Branching Scenario</p>
+    <div class="mt-3 h-2 w-24 bg-yellow-300 mx-auto"></div>
+    <p class="mt-4 text-sm text-black/60">Estimated time: 20–30 minutes</p>
+   </header>
+   <main id="scene-container" class="w-full max-w-3xl flex-1"></main>
+   <footer class="w-full max-w-3xl mt-8 pt-4 border-t-2 border-black/10 text-center">
+    <button id="download-btn" class="inline-flex items-center gap-2 px-4 py-2 border-2 border-black rounded-lg font-semibold text-sm hover:bg-yellow-200 transition" onclick="downloadTextFallback()"> <i data-lucide="download" style="width:16px;height:16px;"></i> Download Text-Only Version (Accessibility) </button>
+   </footer>
+  </div>
+  <script>
+// --- SCENARIO DATA ---
+const scenes = [
+  {
+    id: 1,
+    title: "Scene 1 — Maya Opens the Session",
+    narrative: `Maya opens: "Look — I think we should start from the welcome-packet redesign our colleague Janet did for the maternity ward last year. Parents loved it. We could adapt that approach for pediatrics. We'd save a ton of time." The team is two minutes in. Maya is the most senior person in the room. Janet's project did go well. Sam and David are nodding. What do you say?`,
+    choices: [
+      {
+        label: "A",
+        text: `"Great starting point. Let's design a pediatric welcome packet — what should it include?"`,
+        bias: "Anchoring",
+        feedback: `Textbook anchoring response. You've just locked the team into one solution category. From this point forward, the team's generation will be packet-shaped. The packet may turn out to be the right answer — but you'll never know, because you didn't generate against it. What you could have done: acknowledge the reference, then propose a structural countermove (silent ideation or a SCAMPER round) that protects divergence.`
+      },
+      {
+        label: "B",
+        text: `"That's a useful reference. Before we anchor on packets, can we spend 15 minutes generating ideas silently and individually — no reference to Janet's work — and then compare what came up? If packets still feel strongest, we'll know."`,
+        bias: "Countering Anchoring",
+        feedback: `Strong move. You acknowledged Maya's authority and the validity of the reference while naming the cognitive risk and proposing a structural solution. Silent ideation removes social pressure and protects divergent thinking. This is what facilitative leadership looks like.`
+      },
+      {
+        label: "C",
+        text: `"I don't think we should copy Janet's work. We need something original for pediatrics."`,
+        bias: "Reactance / Contrarianism",
+        feedback: `You pushed back — which takes courage — but without offering a structural alternative. Framing it as "copying" may feel dismissive to Maya and could shut down collaboration. Effective dissent names the process risk and offers a next step, rather than simply opposing.`
+      }
+    ]
+  },
+  {
+    id: 2,
+    title: "Scene 2 — David's Budget Pressure",
+    narrative: `The team has generated several promising directions. David leans forward: "I need to be transparent — we only have budget for one prototype cycle. So whatever we pick, it needs to be something I can show the board in three weeks. I'd suggest we go with the digital check-in kiosk idea. It's tangible, it's tech-forward, the board loves that stuff." Priya looks uncomfortable. You noticed her earlier idea — a pre-visit video call with families — got strong parent-research backing. What do you do?`,
+    choices: [
+      {
+        label: "A",
+        text: `"The kiosk makes sense — it's concrete and board-friendly. Let's scope it out."`,
+        bias: "Authority Bias / HiPPO Effect",
+        feedback: `You deferred to the Highest-Paid Person's Opinion (HiPPO). David controls the budget, so his preference feels like a constraint — but it's actually a preference disguised as a constraint. You've lost Priya's research-backed idea without evaluation. What you could have done: separate the decision criteria (board-readiness, parent impact, feasibility) and score both ideas against them.`
+      },
+      {
+        label: "B",
+        text: `"David, I hear the constraint. Can we take five minutes to score our top three ideas against board-readiness AND parent-impact? That way we're picking the strongest option on both criteria, not just one."`,
+        bias: "Countering Authority Bias",
+        feedback: `Excellent. You validated David's legitimate constraint while expanding the decision frame. By introducing explicit criteria, you make the decision transparent and protect less powerful voices (like Priya's) from being steamrolled. This is structured advocacy.`
+      },
+      {
+        label: "C",
+        text: `"Actually, Priya's video-call idea had the strongest research support. I think we should go with that instead."`,
+        bias: "Champion Bias (Reversed)",
+        feedback: `You advocated for the research — good instinct — but you've created a binary showdown: David's pick vs. Priya's pick. This can trigger defensiveness and positional bargaining. A stronger move uses criteria and process to let the best idea surface without it feeling like a personal contest.`
+      }
+    ]
+  },
+  {
+    id: 3,
+    title: "Scene 3 — The Prototype Review",
+    narrative: `Two weeks later. The team built a prototype of the chosen direction. You're reviewing it with three parent testers. Two parents say the prototype is "fine, helpful, nice." One parent — Carlos — gets emotional: "This doesn't fix my real problem. When my daughter is behind that door and I don't know what's happening, no packet or screen helps. I need someone to talk to me like a human being." Sam whispers to you: "Two out of three liked it. Carlos is an outlier." How do you respond?`,
+    choices: [
+      {
+        label: "A",
+        text: `"You're right — two out of three is a good signal. Let's note Carlos's feedback but keep moving with this direction."`,
+        bias: "Survivorship Bias / Majority Rule Fallacy",
+        feedback: `You prioritized the majority signal and dismissed the emotional outlier. But in empathy-centered design, outliers often reveal the deepest unmet needs. "Fine" and "helpful" may indicate politeness, not genuine impact. Carlos's emotion signals a design opportunity you're walking past. What you could have done: probe why the two "fine" responses lacked Carlos's intensity.`
+      },
+      {
+        label: "B",
+        text: `"Carlos's reaction is the most intense signal we've gotten. Before we dismiss it as an outlier, can we probe what's underneath? The two 'fine' responses might be politeness — Carlos might be showing us the real need."`,
+        bias: "Countering Survivorship Bias",
+        feedback: `Sharp instinct. In qualitative research, emotional intensity is data. You're not ignoring the majority — you're questioning whether 'fine' represents genuine satisfaction or social desirability. This is the kind of signal-reading that separates competent designers from great ones.`
+      },
+      {
+        label: "C",
+        text: `"Let's throw out the prototype and start over based on what Carlos said."`,
+        bias: "Recency Bias / Single-Data-Point Pivot",
+        feedback: `You swung too far. One emotional response — however valid — doesn't justify discarding all prior work. This is recency bias: the most recent, vivid input dominates your judgment. A better move is to investigate whether Carlos's need is shared by others before pivoting.`
+      }
+    ]
+  },
+  {
+    id: 4,
+    title: "Scene 4 — The Stakeholder Presentation",
+    narrative: `You're presenting the refined prototype to the hospital's leadership team. Midway through, Dr. Okafor (Chief of Pediatrics) interrupts: "We tried something like this five years ago. It didn't work then. The parents didn't use it." You can see the energy leave the room. David shifts uncomfortably. Maya raises an eyebrow at you. The team is looking to you. What do you say?`,
+    choices: [
+      {
+        label: "A",
+        text: `"That's good to know. Maybe we should rethink the approach — we don't want to repeat past mistakes."`,
+        bias: "Status Quo Bias / Appeal to Failed Past",
+        feedback: `You let a single historical data point — from a different context, five years ago — derail a research-backed design. This is status quo bias reinforced by authority. The fact that something "didn't work then" tells you nothing about whether it will work now, with different research, different design, and different execution. What you could have done: ask what specifically failed and whether those conditions still apply.`
+      },
+      {
+        label: "B",
+        text: `"Dr. Okafor, that's valuable context. Can you help us understand what specifically didn't land five years ago? Our research conditions and design approach may differ — I'd like to compare before we conclude it won't work now."`,
+        bias: "Countering Status Quo Bias",
+        feedback: `Perfect response. You respected the authority, acknowledged the data point, and asked the critical follow-up: what specifically failed and why? This prevents a vague historical anecdote from killing a research-backed direction. You're treating the past as information, not as a verdict.`
+      },
+      {
+        label: "C",
+        text: `"With respect, Dr. Okafor, our research is current and rigorous. I'm confident this will work."`,
+        bias: "Overconfidence Bias",
+        feedback: `You defended the work — but with certainty rather than curiosity. This can read as dismissive and arrogant, especially to a senior clinician. Confidence is good; certainty is dangerous. A stronger move shows intellectual humility while still protecting the work's integrity.`
+      }
+    ]
+  }
+];
+
+const outcomes = {
+  "Bias-Spotter": {
+    title: "🎯 Outcome: The Bias-Spotter",
+    description: "You consistently identified cognitive biases in real-time and proposed structural countermoves. You balanced courage with diplomacy, protected divergent thinking, and kept the team's process honest without alienating collaborators. This is the hallmark of a design leader — someone who facilitates better thinking, not just better ideas.",
+    recommendation: "Next step: Practice teaching these moves to peers. The highest-leverage version of this skill is making it contagious."
+  },
+  "Autopilot": {
+    title: "🛣️ Outcome: The Autopilot",
+    description: "You tended to go with the flow — deferring to authority, accepting majority signals, and avoiding friction. This isn't weakness; it's a common default, especially for junior team members navigating power dynamics. But design thinking requires productive discomfort. Your job isn't to be agreeable — it's to protect the quality of the team's thinking.",
+    recommendation: "Next step: In your next team session, try one structural intervention (silent ideation, criteria scoring, or a 'what would have to be true?' question). Notice what happens."
+  },
+  "Front-On": {
+    title: "⚡ Outcome: The Front-On Challenger",
+    description: "You showed courage and conviction — pushing back against authority, championing underdogs, and trusting your instincts. That's valuable. But unstructured dissent can trigger defensiveness and positional conflict. The most effective challengers offer process alternatives, not just opposition. They make it easy for others to change their minds.",
+    recommendation: "Next step: Next time you disagree, try framing your pushback as a question or a process proposal rather than a counter-position. Notice how the room responds differently."
+  }
+};
+
+// --- STATE ---
+let currentScene = -1; // -1 = intro
+let answers = []; // stores 'A', 'B', 'C' per scene
+
+function getOutcome() {
+  const counts = { A: 0, B: 0, C: 0 };
+  answers.forEach(a => counts[a]++);
+  if (counts.B >= counts.A && counts.B >= counts.C) return "Bias-Spotter";
+  if (counts.A >= counts.B && counts.A >= counts.C) return "Autopilot";
+  return "Front-On";
+}
+
+function renderIntro() {
+  const container = document.getElementById('scene-container');
+  container.innerHTML = `
+    <div class="fade-in">
+      <div class="bg-yellow-300 p-6 rounded-xl card-shadow mb-8 border-2 border-black">
+        <h2 class="text-xl font-black mb-3">THE SETUP</h2>
+        <p class="text-sm leading-relaxed mb-3">You are a <span class="highlight">junior product designer</span> at a healthcare innovation consultancy. Your firm has been hired by a hospital system that operates a <span class="highlight">pediatric diagnostic center</span> serving children aged 6–12.</p>
+        <p class="text-sm leading-relaxed mb-3">The center's parent-satisfaction scores have been declining for two years. Empathy research is complete: parents feel <strong>anxious, uninformed, and powerless</strong> during diagnostic appointments — and the visual and procedural environment contributes to the anxiety.</p>
+      </div>
+      <div class="bg-white p-6 rounded-xl card-shadow border-2 border-black mb-8">
+        <h3 class="font-bold mb-3">The Room:</h3>
+        <ul class="space-y-2 text-sm">
+          <li><strong>Maya</strong> — Senior design lead (15 years' experience, well-respected)</li>
+          <li><strong>David</strong> — Hospital administrator (strong opinions, controls budget)</li>
+          <li><strong>Priya</strong> — Child-life specialist (clinical expertise, soft-spoken)</li>
+          <li><strong>Sam</strong> — Junior copywriter (your peer)</li>
+          <li><strong>You</strong></li>
+        </ul>
+      </div>
+      <div class="bg-white p-6 rounded-xl card-shadow border-2 border-black mb-8">
+        <h3 class="font-bold mb-2">The HMW:</h3>
+        <p class="text-sm italic bg-yellow-100 p-3 rounded border-l-4 border-yellow-400">"How might we help parents of pediatric diagnostic patients feel informed, respected, and in control during their child's appointment?"</p>
+      </div>
+      <div class="text-center">
+        <button onclick="startScenario()" class="px-8 py-4 bg-black text-white font-bold rounded-lg text-lg hover:bg-yellow-400 hover:text-black transition border-2 border-black card-shadow-sm">
+          Begin Scenario →
+        </button>
+      </div>
+    </div>
+  `;
+  lucide.createIcons();
+}
+
+function startScenario() {
+  currentScene = 0;
+  answers = [];
+  renderScene();
+}
+
+function renderScene() {
+  const scene = scenes[currentScene];
+  const container = document.getElementById('scene-container');
+  container.innerHTML = `
+    <div class="fade-in">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="bg-black text-white px-3 py-1 rounded-full text-xs font-bold">${currentScene + 1} / 4</div>
+        <div class="flex-1 h-2 bg-black/10 rounded-full overflow-hidden">
+          <div class="h-full bg-yellow-400 transition-all" style="width:${((currentScene + 1) / 4) * 100}%"></div>
+        </div>
+      </div>
+      <h2 class="text-2xl font-black mb-4">${scene.title}</h2>
+      <div class="bg-white p-5 rounded-xl border-2 border-black card-shadow mb-6">
+        <p class="text-sm leading-relaxed">${scene.narrative}</p>
+      </div>
+      <div id="choices-area" class="space-y-3">
+        ${scene.choices.map((c, i) => `
+          <button onclick="selectChoice(${i})" class="choice-btn w-full text-left p-4 rounded-xl border-2 border-black bg-white card-shadow-sm hover:bg-yellow-100 transition cursor-pointer">
+            <span class="inline-block bg-black text-white text-xs font-bold px-2 py-1 rounded mr-2">${c.label}</span>
+            <span class="text-sm">${c.text}</span>
+          </button>
+        `).join('')}
+      </div>
+      <div id="feedback-area" class="hidden mt-6"></div>
+    </div>
+  `;
+  lucide.createIcons();
+}
+
+function selectChoice(index) {
+  const scene = scenes[currentScene];
+  const choice = scene.choices[index];
+  answers.push(choice.label);
+
+  // Disable all buttons
+  document.querySelectorAll('.choice-btn').forEach((btn, i) => {
+    btn.disabled = true;
+    btn.classList.remove('hover:bg-yellow-100', 'cursor-pointer');
+    if (i === index) {
+      btn.classList.add('bg-yellow-200', 'ring-2', 'ring-yellow-500');
+    } else {
+      btn.classList.add('opacity-40');
+    }
+  });
+
+  // Show feedback
+  const feedbackArea = document.getElementById('feedback-area');
+  feedbackArea.classList.remove('hidden');
+  feedbackArea.innerHTML = `
+    <div class="fade-in bg-white p-5 rounded-xl border-2 border-black card-shadow">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="bg-yellow-300 text-black text-xs font-black px-3 py-1 rounded-full border border-black">BIAS: ${choice.bias}</span>
+      </div>
+      <p class="text-sm leading-relaxed mb-4">${choice.feedback}</p>
+      <div class="text-right">
+        <button onclick="nextScene()" class="px-6 py-3 bg-black text-white font-bold rounded-lg hover:bg-yellow-400 hover:text-black transition border-2 border-black">
+          ${currentScene < 3 ? 'Continue →' : 'See Your Outcome →'}
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function nextScene() {
+  currentScene++;
+  if (currentScene >= 4) {
+    renderOutcome();
+  } else {
+    renderScene();
+  }
+}
+
+function renderOutcome() {
+  const outcomeKey = getOutcome();
+  const outcome = outcomes[outcomeKey];
+  const container = document.getElementById('scene-container');
+  container.innerHTML = `
+    <div class="fade-in text-center">
+      <div class="bg-yellow-300 p-8 rounded-xl border-2 border-black card-shadow mb-6">
+        <h2 class="text-3xl font-black mb-2">Scene 5 — Your Result</h2>
+        <p class="text-lg font-bold">${outcome.title}</p>
+      </div>
+      <div class="bg-white p-6 rounded-xl border-2 border-black card-shadow mb-6 text-left">
+        <p class="text-sm leading-relaxed mb-4">${outcome.description}</p>
+        <div class="bg-yellow-50 p-4 rounded-lg border-l-4 border-yellow-400">
+          <p class="text-sm font-semibold">${outcome.recommendation}</p>
+        </div>
+      </div>
+      <div class="flex flex-col sm:flex-row gap-3 justify-center">
+        <button onclick="replay()" class="px-6 py-3 bg-black text-white font-bold rounded-lg hover:bg-yellow-400 hover:text-black transition border-2 border-black card-shadow-sm">
+          <i data-lucide="rotate-ccw" style="width:16px;height:16px;display:inline;vertical-align:middle;margin-right:6px;"></i>Replay Scenario
+        </button>
+        <button onclick="downloadTextFallback()" class="px-6 py-3 bg-white text-black font-bold rounded-lg hover:bg-yellow-100 transition border-2 border-black card-shadow-sm">
+          <i data-lucide="download" style="width:16px;height:16px;display:inline;vertical-align:middle;margin-right:6px;"></i>Download Text Version
+        </button>
+      </div>
+    </div>
+  `;
+  lucide.createIcons();
+}
+
+function replay() {
+  currentScene = -1;
+  answers = [];
+  renderIntro();
+}
+
+// --- TEXT FALLBACK DOWNLOAD ---
+function downloadTextFallback() {
+  let text = "THE BIAS-SPOTTER — Text-Only Fallback Version\nA Design-Thinking Branching Scenario\n";
+  text += "=" .repeat(50) + "\n\n";
+  text += "SETUP:\nYou are a junior product designer at a healthcare innovation consultancy hired by a hospital system operating a pediatric diagnostic center (ages 6-12). Parent-satisfaction scores have declined for two years. Parents feel anxious, uninformed, and powerless.\n\n";
+  text += "TEAM: Maya (senior design lead), David (hospital admin), Priya (child-life specialist), Sam (junior copywriter), You.\n\n";
+  text += "HMW: How might we help parents of pediatric diagnostic patients feel informed, respected, and in control during their child's appointment?\n\n";
+  text += "=" .repeat(50) + "\n\n";
+
+  scenes.forEach(scene => {
+    text += scene.title.toUpperCase() + "\n" + "-".repeat(40) + "\n";
+    text += scene.narrative + "\n\n";
+    scene.choices.forEach(c => {
+      text += `Choice ${c.label}: ${c.text}\n`;
+      text += `  → Bias: ${c.bias}\n`;
+      text += `  → Feedback: ${c.feedback}\n\n`;
+    });
+    text += "\n";
+  });
+
+  text += "=" .repeat(50) + "\n\nOUTCOMES:\n\n";
+  Object.entries(outcomes).forEach(([key, o]) => {
+    text += `${o.title}\n${o.description}\n${o.recommendation}\n\n`;
+  });
+
+  text += "\nRouting: Mostly B = Bias-Spotter | Mostly A = Autopilot | Mostly C = Front-On Challenger\n";
+
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'Bias-Spotter-Text-Fallback.txt';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// --- ELEMENT SDK ---
+const defaultConfig = {
+  main_title: "The Bias-Spotter",
+  subtitle: "A Design-Thinking Branching Scenario",
+  background_color: "#FFFFFF",
+  surface_color: "#FFFF00",
+  text_color: "#000000",
+  primary_action_color: "#000000",
+  secondary_action_color: "#FFFF00",
+  font_family: "Montserrat",
+  font_size: 16
+};
+
+function applyConfig(config) {
+  const title = document.getElementById('main-title');
+  const sub = document.getElementById('subtitle');
+  if (title) title.textContent = config.main_title || defaultConfig.main_title;
+  if (sub) sub.textContent = config.subtitle || defaultConfig.subtitle;
+  const font = config.font_family || defaultConfig.font_family;
+  document.body.style.fontFamily = `${font}, sans-serif`;
+}
+
+window.elementSdk.init({
+  defaultConfig,
+  onConfigChange: async (config) => { applyConfig(config); },
+  mapToCapabilities: (config) => ({
+    recolorables: [
+      { get: () => config.background_color || defaultConfig.background_color, set: (v) => { config.background_color = v; window.elementSdk.setConfig({ background_color: v }); } },
+      { get: () => config.surface_color || defaultConfig.surface_color, set: (v) => { config.surface_color = v; window.elementSdk.setConfig({ surface_color: v }); } },
+      { get: () => config.text_color || defaultConfig.text_color, set: (v) => { config.text_color = v; window.elementSdk.setConfig({ text_color: v }); } },
+      { get: () => config.primary_action_color || defaultConfig.primary_action_color, set: (v) => { config.primary_action_color = v; window.elementSdk.setConfig({ primary_action_color: v }); } },
+      { get: () => config.secondary_action_color || defaultConfig.secondary_action_color, set: (v) => { config.secondary_action_color = v; window.elementSdk.setConfig({ secondary_action_color: v }); } }
+    ],
+    borderables: [],
+    fontEditable: { get: () => config.font_family || defaultConfig.font_family, set: (v) => { config.font_family = v; window.elementSdk.setConfig({ font_family: v }); } },
+    fontSizeable: { get: () => config.font_size || defaultConfig.font_size, set: (v) => { config.font_size = v; window.elementSdk.setConfig({ font_size: v }); } }
+  }),
+  mapToEditPanelValues: (config) => new Map([
+    ["main_title", config.main_title || defaultConfig.main_title],
+    ["subtitle", config.subtitle || defaultConfig.subtitle]
+  ])
+});
+
+// Init
+document.addEventListener('DOMContentLoaded', function() {
+  renderIntro();
+  lucide.createIcons();
+});
+</script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9fa6ede5c6e6c7b9',t:'MTc3ODU2Mjc1Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
